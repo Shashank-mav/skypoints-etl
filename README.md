@@ -1,5 +1,8 @@
 # SkyPoints ETL Pipeline
 
+---
+*README drafted with help from AI tools.*
+
 An end-to-end ETL pipeline for the **SkyPoints** airline loyalty program, built on **Databricks** with **PySpark** and **Delta Lake**.
 
 ## Problem
