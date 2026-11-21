@@ -1,28 +1,25 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 02 — Raw Ingestion (CSV → Bronze)
-# MAGIC Reads country CSV files, maps columns to the unified bronze schema,
-# MAGIC and writes to the `bronze_members` Delta table.
-# MAGIC 
-# MAGIC All values are kept as **strings** — no type casting or transformations here.
+# MAGIC Reading country CSV files, maps columns to the bronze schema,
+# MAGIC and write to `bronze_members` Delta table.
 
 # COMMAND ----------
 
+# repo root to path to  find our src/ modules
 import sys
-sys.path.insert(0, "/Workspace/Repos/skypoints-etl")
+sys.path.insert(0, "/Workspace/Repos/Shashank/skypoints-etl")
 
 from src.transformations import ingest_csv_to_bronze, ingest_all_countries
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Configuration
-# MAGIC Update these paths to match where you uploaded the sample data files.
 
-# COMMAND ----------
-
-# Path to the uploaded sample data (adjust to your DBFS or Volume path)
-DATA_BASE_PATH = "/Workspace/Repos/skypoints-etl/data/sample"
+DATA_BASE_PATH = "/Volumes/workspace/skypoints/sample_data"
 
 file_paths = {
     "USA": f"{DATA_BASE_PATH}/USA.csv",
@@ -32,29 +29,24 @@ file_paths = {
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC SELECT current_catalog()
+
+# COMMAND ----------
+
 # MAGIC %md
-# MAGIC ## Ingest Each Country File
+# MAGIC ### Ingestting Each Country File
 
 # COMMAND ----------
 
 bronze_df = ingest_all_countries(spark, file_paths)
 
-print(f"Total records ingested: {bronze_df.count()}")
+print(f"no. of records ingested: {bronze_df.count()}")
 bronze_df.show(truncate=False)
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Verify Schema
-
-# COMMAND ----------
-
 bronze_df.printSchema()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Write to Bronze Delta Table
 
 # COMMAND ----------
 
@@ -65,12 +57,7 @@ bronze_df.printSchema()
     .saveAsTable("skypoints.bronze_members")
 )
 
-print("✓ Bronze table loaded successfully")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Verify Bronze Table
+print("Bronze table completed success")
 
 # COMMAND ----------
 

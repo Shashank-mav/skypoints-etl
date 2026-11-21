@@ -1,20 +1,24 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
-# MAGIC # 06 — Data Validations
-# MAGIC 
+# MAGIC ### 06 Data Validations
+# MAGIC
 # MAGIC Runs data quality checks on the silver staging layer:
-# MAGIC 1. **Mandatory field checks** — member_id, member_name, enrollment_date, country
-# MAGIC 2. **Key uniqueness** — duplicate member_id within a batch
-# MAGIC 3. **Date validity** — future dates, impossible dates, parse failures
-# MAGIC 4. **Tier code validation** — only GLD, SLV, PLT allowed
-# MAGIC 5. **Date parse failure detection** — catches values like `2021-13-13`
-# MAGIC 
+# MAGIC 1. Mandatory field checks — member_id, member_name, enrollment_date, country
+# MAGIC 2. uniqueness check — duplicate member_id within a batch
+# MAGIC 3. Date valid test — future dates, impossible dates, parse failures
+# MAGIC 4. Tier code validation — only GLD, SLV, PLT allowed
+# MAGIC 5. Date parse failc check — values like `2021-13-13`
+# MAGIC
 # MAGIC Records that fail validation are **quarantined** (not silently dropped).
 
 # COMMAND ----------
 
 import sys
-sys.path.insert(0, "/Workspace/Repos/skypoints-etl")
+sys.path.insert(0, "/Workspace/Repos/Shashank/skypoints-etl")
 
 from src.validations import (
     check_mandatory_fields,
@@ -97,8 +101,6 @@ tier_issues.select("member_id", "tier_code", "tier_check").show(truncate=False)
 
 # MAGIC %md
 # MAGIC ## 5. Date Parse Failure Detection
-# MAGIC This catches values that existed in bronze but became NULL after parsing.
-# MAGIC For example, `2021-13-13` in the AUS file (month = 13 is invalid).
 
 # COMMAND ----------
 
@@ -116,7 +118,7 @@ parse_failures.select(
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Combined Validation — Split Valid vs Quarantine
+# MAGIC ## Combined Validation 
 
 # COMMAND ----------
 
@@ -148,7 +150,7 @@ quarantine_df.show(truncate=False)
     .saveAsTable("skypoints.quarantine_members")
 )
 
-print("✓ Quarantine table updated")
+print("Quarantine table updated")
 
 # COMMAND ----------
 

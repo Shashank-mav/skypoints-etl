@@ -1,23 +1,27 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
-# MAGIC # 03 — Staging Transformations (Bronze → Silver)
-# MAGIC 
-# MAGIC Transforms raw bronze data into the typed silver staging layer:
-# MAGIC 1. Parses dates using per-country format rules
-# MAGIC 2. Cleans NULL strings and invalid values
-# MAGIC 3. Computes derived columns: **Age** (from DOB) and **Stale_Member** (flight > 90 days ago)
+# MAGIC ### 3 Staging Transformations (Bronze → Silver)
+# MAGIC
+# MAGIC Transforms raw bronze data into the silver staging layer:
+# MAGIC 1. Parses dates using country format rules
+# MAGIC 2. Clean null strings and invalid values
+# MAGIC 3. Computes derived columns: Age  and Stale_Member (flight > 90 days ago)
 
 # COMMAND ----------
 
 import sys
-sys.path.insert(0, "/Workspace/Repos/skypoints-etl")
+sys.path.insert(0, "/Workspace/Repos/Shashank/skypoints-etl")
 
 from src.transformations import transform_bronze_to_silver
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Read Bronze Data
+# MAGIC ### Reading Bronze Data
 
 # COMMAND ----------
 
@@ -40,7 +44,7 @@ silver_df.show(truncate=False)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Inspect Derived Columns
+# MAGIC ### Derived columns
 
 # COMMAND ----------
 
@@ -49,12 +53,6 @@ silver_df.select(
     "date_of_birth", "age",
     "last_flight_date", "stale_member"
 ).show(truncate=False)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Inspect Date Parsing Results
-# MAGIC Check that dates were parsed correctly for each country format.
 
 # COMMAND ----------
 
@@ -78,7 +76,7 @@ silver_df.select(
     .saveAsTable("skypoints.silver_members")
 )
 
-print("✓ Silver table loaded successfully")
+print("Silver table loaded ")
 
 # COMMAND ----------
 

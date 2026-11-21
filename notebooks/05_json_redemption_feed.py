@@ -1,10 +1,14 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
-# MAGIC # 05 — JSON Redemption Feed
-# MAGIC 
-# MAGIC Parses the semi-structured JSON redemption feed into a flattened,
-# MAGIC queryable Delta table. Each nested transaction becomes its own row.
-# MAGIC 
+# MAGIC # 5 — JSON Redemption Feed
+# MAGIC
+# MAGIC Parses the semi structured JSON redemption into  flattened,
+# MAGIC queryable Delta table. Each nested transaction becomes own row.
+# MAGIC
 # MAGIC ## Input Format
 # MAGIC ```json
 # MAGIC {
@@ -15,30 +19,25 @@
 # MAGIC   ]
 # MAGIC }
 # MAGIC ```
-# MAGIC 
+# MAGIC
 # MAGIC ## Output
 # MAGIC One row per transaction with `member_id`, `feed_date`, and all transaction fields.
 
 # COMMAND ----------
 
 import sys
-sys.path.insert(0, "/Workspace/Repos/skypoints-etl")
+sys.path.insert(0, "/Workspace/Repos/Shashank/skypoints-etl")
 
 from src.transformations import parse_redemption_json
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Configuration
-
-# COMMAND ----------
-
-JSON_PATH = "/Workspace/Repos/skypoints-etl/data/sample/redemptions.json"
+JSON_PATH = "/Volumes/workspace/skypoints/sample_data/redemptions.json"
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Parse & Flatten JSON
+# MAGIC ## Parse + Flatten JSON
 
 # COMMAND ----------
 
@@ -50,7 +49,7 @@ redemptions_df.show(truncate=False)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Inspect Schema
+# MAGIC ### Schema
 
 # COMMAND ----------
 
@@ -70,12 +69,7 @@ redemptions_df.printSchema()
     .saveAsTable("skypoints.gold_redemptions")
 )
 
-print("✓ Redemptions table loaded successfully")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Verify
+print("Redemptions table loaded done")
 
 # COMMAND ----------
 
@@ -86,9 +80,9 @@ print("✓ Redemptions table loaded successfully")
 
 # MAGIC %md
 # MAGIC ## Joining Redemptions Back to Member Profile
-# MAGIC 
+# MAGIC
 # MAGIC The redemptions table joins to any member table on `member_id`:
-# MAGIC 
+# MAGIC
 # MAGIC ```sql
 # MAGIC -- Example: Total miles redeemed per member with their profile info
 # MAGIC SELECT
@@ -108,7 +102,7 @@ print("✓ Redemptions table loaded successfully")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Run the Join Example
+# MAGIC ## Join Example
 
 # COMMAND ----------
 

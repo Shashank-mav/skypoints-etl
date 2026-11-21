@@ -1,11 +1,15 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 01 — DDL Setup
-# MAGIC Creates the SkyPoints database and all Delta tables:
-# MAGIC - **Bronze**: Raw landing table (all strings)
-# MAGIC - **Silver**: Staging table (typed, with derived columns)
-# MAGIC - **Gold**: Per-country tables + Redemptions
-# MAGIC - **Quarantine**: Records that fail validation
+# MAGIC Creating the database and Delta tables:
+# MAGIC - Bronze: Raw landing table
+# MAGIC - Silver: Staging table (with derived columns)
+# MAGIC - Gold: country tables + Redemption
+# MAGIC - Quarantine: Records that fails validation
 
 # COMMAND ----------
 
@@ -16,7 +20,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Bronze — Raw Landing Table
+# MAGIC ## Bronze —> Raw (Landing) Table
 
 # COMMAND ----------
 
@@ -44,7 +48,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Silver — Staging Table
+# MAGIC ## Silver -> Staging Table
 
 # COMMAND ----------
 
@@ -75,7 +79,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Gold — Country Tables
+# MAGIC ## Gold -> Country Tables
 
 # COMMAND ----------
 
@@ -110,12 +114,13 @@ for code, description in countries.items():
         USING DELTA
         COMMENT 'Gold table — {description}'
     """)
-    print(f"✓ Created skypoints.gold_members_{code}")
+    print(f"Created thee skypoints.gold_members_{code}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Gold — Redemptions Table (Flattened JSON)
+# MAGIC ## Gold -> Redemptions Table 
+# MAGIC > as asked in assignennt - "Parse the semi-structured JSON redemption feed into a flattened, queryable table, and describe how you would join it back to the member profile data."
 
 # COMMAND ----------
 
@@ -132,12 +137,13 @@ for code, description in countries.items():
 # MAGIC     load_timestamp  TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC COMMENT 'Gold table — flattened redemption transactions from JSON feed';
+# MAGIC COMMENT 'Gold tables ';
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Quarantine Table
+# MAGIC > as asked in assignmet - "Create the necessary data validations — mandatory field checks, key-column uniqueness, and any checks you would add to catch the kind of data issues visible in the sample data above."
 
 # COMMAND ----------
 
@@ -153,11 +159,6 @@ for code, description in countries.items():
 # MAGIC )
 # MAGIC USING DELTA
 # MAGIC COMMENT 'Records that failed data validation checks';
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Verify All Tables Created
 
 # COMMAND ----------
 

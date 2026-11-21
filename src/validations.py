@@ -1,12 +1,6 @@
 """
 Data validation functions for SkyPoints ETL.
-
-Runs quality checks on the silver layer before data moves to gold:
-  - Mandatory field checks (member_id, member_name, enrollment_date, country)
-  - Key column uniqueness (member_id)
-  - Date validity (no future dates, no impossible dates)
-  - Tier code validity
-  - Referential integrity between redemptions and members
+Checks data quality before silver -> gold promotion.
 """
 
 from pyspark.sql import DataFrame
@@ -14,19 +8,8 @@ from pyspark.sql import functions as F
 from typing import Tuple
 
 
-# =============================================================================
-# Individual Validation Rules
-# =============================================================================
-
 def check_mandatory_fields(df: DataFrame) -> DataFrame:
-    """
-    Flag records missing mandatory fields.
-
-    Mandatory: member_id, member_name, enrollment_date, country
-    Returns DataFrame with a 'mandatory_check' column:
-      - NULL if all mandatory fields present
-      - Error message string if any are missing
-    """
+    """Flag records missing mandatory fields"""
     checks = []
 
     mandatory_fields = {
@@ -44,7 +27,6 @@ def check_mandatory_fields(df: DataFrame) -> DataFrame:
             )
         )
 
-    # Concat all non-null error messages
     error_col = F.concat_ws(
         "; ",
         *[F.when(c.isNotNull(), c) for c in checks]
@@ -57,47 +39,25 @@ def check_mandatory_fields(df: DataFrame) -> DataFrame:
 
 
 def check_key_uniqueness(df: DataFrame, key_col: str = "member_id") -> DataFrame:
-    """
-    Flag duplicate keys within the same batch.
-
-    Adds 'duplicate_check' column:
-      - NULL if unique
-      - 'Duplicate member_id' if duplicated
-
-    Note: Duplicates within a batch are flagged; across batches,
-    the MERGE handles "latest record wins".
-    """
-    window = F.count("*").over(
-        F.window.partitionBy(key_col).orderBy(F.lit(1)).rowsBetween(
-            F.window.unboundedPreceding, F.window.unboundedFollowing
-        )
-    ) if False else None  # Placeholder — use groupBy approach below
-
-    # Count occurrences of each key
-    dup_counts = df.groupBy(key_col).count().filter(F.col("count") > 1)
+    """Flag duplicate member_ids within same country"""
+    dup_counts = (
+        df.groupBy(key_col, "source_country")
+        .count()
+        .filter(F.col("count") > 1)
+    )
 
     return df.join(
-        dup_counts.select(key_col).withColumn("duplicate_check", F.lit("Duplicate member_id")),
-        on=key_col,
+        dup_counts.select(key_col, "source_country")
+        .withColumn("duplicate_check", F.lit("Duplicate member_id")),
+        on=[key_col, "source_country"],
         how="left",
     )
 
 
 def check_date_validity(df: DataFrame) -> DataFrame:
-    """
-    Flag records with invalid dates.
-
-    Checks:
-      - enrollment_date in the future
-      - last_flight_date before enrollment_date
-      - date_of_birth in the future or unreasonably old (> 120 years)
-      - Dates that failed parsing (NULL after to_date but non-null in bronze)
-
-    Adds 'date_check' column with error messages.
-    """
+    """Check for future dates, flight before enrollment, unreasonable DOB etc"""
     checks = []
 
-    # Enrollment date in the future
     checks.append(
         F.when(
             F.col("enrollment_date") > F.current_date(),
@@ -105,7 +65,6 @@ def check_date_validity(df: DataFrame) -> DataFrame:
         )
     )
 
-    # Flight date before enrollment date
     checks.append(
         F.when(
             F.col("last_flight_date").isNotNull()
@@ -115,7 +74,6 @@ def check_date_validity(df: DataFrame) -> DataFrame:
         )
     )
 
-    # DOB in the future
     checks.append(
         F.when(
             F.col("date_of_birth").isNotNull()
@@ -124,7 +82,6 @@ def check_date_validity(df: DataFrame) -> DataFrame:
         )
     )
 
-    # DOB unreasonably old (> 120 years)
     checks.append(
         F.when(
             F.col("age").isNotNull() & (F.col("age") > 120),
@@ -144,11 +101,7 @@ def check_date_validity(df: DataFrame) -> DataFrame:
 
 
 def check_tier_code(df: DataFrame) -> DataFrame:
-    """
-    Flag records with invalid tier codes.
-
-    Valid tiers: GLD (Gold), SLV (Silver), PLT (Platinum)
-    """
+    """only GLD, SLV, PLT are valid"""
     valid_tiers = ["GLD", "SLV", "PLT"]
 
     return df.withColumn(
@@ -161,17 +114,10 @@ def check_tier_code(df: DataFrame) -> DataFrame:
     )
 
 
-def check_date_parse_failures(
-    bronze_df: DataFrame,
-    silver_df: DataFrame,
-) -> DataFrame:
-    """
-    Detect dates that existed in bronze but became NULL after parsing.
+def check_date_parse_failures(bronze_df: DataFrame, silver_df: DataFrame) -> DataFrame:
+    """find dates that existed in bronze but became NULL after parsing
+    eg: '2021-13-13' (month 13) in AUS data"""
 
-    This catches invalid dates like '2021-13-13' (month=13 in AUS data).
-
-    Returns DataFrame of records where a date was lost during parsing.
-    """
     date_cols = ["enrollment_date", "last_flight_date", "date_of_birth"]
 
     bronze_dates = bronze_df.select(
@@ -190,7 +136,6 @@ def check_date_parse_failures(
         how="inner",
     )
 
-    # Flag where raw is non-null but parsed is null
     checks = []
     for c in date_cols:
         checks.append(
@@ -211,29 +156,15 @@ def check_date_parse_failures(
     ).filter(F.col("parse_failure").isNotNull())
 
 
-# =============================================================================
-# Combined Validation Pipeline
-# =============================================================================
-
 def run_all_validations(df: DataFrame) -> Tuple[DataFrame, DataFrame]:
-    """
-    Run all validation checks and split into valid + quarantined records.
+    """runs all checks, splits into valid records and quarantined ones"""
 
-    Args:
-        df: Silver DataFrame
-
-    Returns:
-        Tuple of (valid_df, quarantine_df)
-          - valid_df: Records that passed all checks (validation columns dropped)
-          - quarantine_df: Records that failed at least one check
-    """
     validated = df
     validated = check_mandatory_fields(validated)
     validated = check_key_uniqueness(validated)
     validated = check_date_validity(validated)
     validated = check_tier_code(validated)
 
-    # Combine all error columns into one
     error_columns = ["mandatory_check", "duplicate_check", "date_check", "tier_check"]
 
     validated = validated.withColumn(
@@ -249,7 +180,6 @@ def run_all_validations(df: DataFrame) -> Tuple[DataFrame, DataFrame]:
         F.when(F.col("validation_errors") == "", None).otherwise(F.col("validation_errors"))
     )
 
-    # Split
     valid_df = (
         validated
         .filter(F.col("validation_errors").isNull())

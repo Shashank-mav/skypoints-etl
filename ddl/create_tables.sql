@@ -1,9 +1,7 @@
--- =============================================================================
--- SkyPoints ETL — DDL (Databricks / Delta Lake)
--- =============================================================================
+
 -- Three-layer Medallion Architecture:
 --   Bronze (Raw/Landing) → Silver (Staging) → Gold (Country + Redemptions)
--- =============================================================================
+ 
 
 -- -------------------------
 -- 0. Create Database
@@ -11,11 +9,10 @@
 CREATE DATABASE IF NOT EXISTS skypoints;
 USE skypoints;
 
--- =============================================================================
+ 
 -- BRONZE LAYER — Raw / Landing
--- =============================================================================
--- All columns stored as STRING to preserve raw data exactly as received.
--- Metadata columns track lineage (source file, country, load timestamp).
+ 
+
 
 CREATE TABLE IF NOT EXISTS bronze_members (
     member_id       STRING,
@@ -31,7 +28,7 @@ CREATE TABLE IF NOT EXISTS bronze_members (
     is_active       STRING,
     individual_or_corporate STRING,
 
-    -- Metadata / Lineage
+    -- Metadata 
     source_file     STRING      COMMENT 'Original filename (e.g. USA.csv)',
     source_country  STRING      COMMENT 'Country derived from filename',
     load_timestamp  TIMESTAMP   COMMENT 'When this record was ingested'
@@ -41,11 +38,10 @@ COMMENT 'Bronze landing table — raw member data, all strings, no transformatio
 TBLPROPERTIES ('quality' = 'bronze');
 
 
--- =============================================================================
+ 
 -- SILVER LAYER — Staging
--- =============================================================================
--- Standardized schema with proper data types.
--- Derived columns: age (from DOB) and stale_member (flight_date > 90 days ago).
+ 
+
 
 CREATE TABLE IF NOT EXISTS silver_members (
     member_id       STRING      NOT NULL,
@@ -76,14 +72,9 @@ COMMENT 'Silver staging table — typed, standardized, with derived columns'
 TBLPROPERTIES ('quality' = 'silver');
 
 
--- =============================================================================
+ 
 -- GOLD LAYER — Country-Specific Tables
--- =============================================================================
--- One table per country. Schema is identical across all country tables.
--- Populated via MERGE (upsert) using member_id as the key.
--- "Latest record wins" — determined by enrollment_date or load_timestamp.
 
--- Template used for each country table:
 
 CREATE TABLE IF NOT EXISTS gold_members_usa (
     member_id       STRING      NOT NULL,
@@ -157,10 +148,9 @@ COMMENT 'Gold table — Australia members'
 TBLPROPERTIES ('quality' = 'gold');
 
 
--- =============================================================================
--- GOLD LAYER — Redemption Transactions (Flattened from JSON)
--- =============================================================================
--- One row per transaction. Joins to any member table on member_id.
+ 
+-- GOLD LAYER — Redemption Transactions (flattened from JSON)
+ 
 
 CREATE TABLE IF NOT EXISTS gold_redemptions (
     member_id       STRING      NOT NULL,
@@ -180,16 +170,16 @@ COMMENT 'Gold table — flattened redemption transactions from JSON feed'
 TBLPROPERTIES ('quality' = 'gold');
 
 
--- =============================================================================
+ 
 -- QUARANTINE TABLE — Records that fail validation
--- =============================================================================
--- Bad records land here instead of being silently dropped.
+ 
+-- Bad records land here 
 
 CREATE TABLE IF NOT EXISTS quarantine_members (
     member_id       STRING,
     member_name     STRING,
-    raw_record      STRING      COMMENT 'Full original record as a string',
-    validation_errors STRING    COMMENT 'Comma-separated list of failed checks',
+    raw_record      STRING      COMMENT 'Full original record as string',
+    validation_errors STRING    COMMENT 'list of failed checks',
     source_file     STRING,
     source_country  STRING,
     quarantined_at  TIMESTAMP

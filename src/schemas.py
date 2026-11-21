@@ -1,18 +1,11 @@
 """
 Schema definitions and column mappings for SkyPoints ETL.
-
-Each country file has a different schema. This module defines:
-  - The unified bronze (raw) schema all files get mapped into
-  - Per-country column name mappings
-  - Per-country date format strings
 """
 
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 
 
-# =============================================================================
-# Bronze schema — all STRING except metadata columns
-# =============================================================================
+# bronze schema, all strings
 BRONZE_SCHEMA = StructType([
     StructField("member_id", StringType(), True),
     StructField("member_name", StringType(), True),
@@ -32,12 +25,7 @@ BRONZE_SCHEMA = StructType([
 ])
 
 
-# =============================================================================
-# Column mappings: source column name → unified bronze column name
-# =============================================================================
-# Keys = exact column names in the CSV header
-# Values = target column name in the bronze table
-
+# csv column name -> bronze column name per country
 COLUMN_MAPPINGS = {
     "USA": {
         "ID": "member_id",
@@ -66,29 +54,24 @@ COLUMN_MAPPINGS = {
 }
 
 
-# =============================================================================
-# Date formats per country (used during Silver transformation)
-# =============================================================================
-# These are Python strftime / Spark to_date format strings.
-
+# spark date format strings per country
 DATE_FORMATS = {
     "USA": {
-        "enrollment_date": "Mddyyyy",   # e.g. 6152022 → ambiguous, handled in utils
+        "enrollment_date": "Mddyyyy",    # 6152022
         "last_flight_date": "Mddyyyy",
     },
     "IND": {
-        "enrollment_date": "M/d/yyyy",  # e.g. 1/1/2022
+        "enrollment_date": "M/d/yyyy",   # 1/1/2022
         "last_flight_date": "M/d/yyyy",
         "date_of_birth": "M/d/yyyy",
     },
     "AUS": {
-        "enrollment_date": "yyyy-MM-dd",  # e.g. 2022-05-11
+        "enrollment_date": "yyyy-MM-dd",  # 2022-05-11
         "last_flight_date": "yyyy-MM-dd",
         "date_of_birth": "yyyy-MM-dd",
     },
 }
 
-# Country code to full name mapping (for display / table naming)
 COUNTRY_NAMES = {
     "USA": "usa",
     "IND": "ind",
@@ -97,7 +80,6 @@ COUNTRY_NAMES = {
     "PHIL": "phil",
 }
 
-# All bronze columns (for ensuring consistent column order)
 BRONZE_COLUMNS = [
     "member_id", "member_name", "date_of_birth", "tier_code",
     "enrollment_date", "last_flight_date", "agent_name", "state",
